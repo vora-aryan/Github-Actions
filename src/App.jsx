@@ -1,126 +1,125 @@
-import React, { useRef, useState, useEffect } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+/* eslint-disable no-unused-vars */
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 
-gsap.registerPlugin(ScrollTrigger);
+// import { useEffect, useState } from "react";
 
-const slidesData = [
-  "#ff5733",
-  "#33b5ff",
-  "#8e44ad",
-  "#16a085",
-  "#f39c12",
-  "#2c3e50",
-];
+const App = () => {
+  const [page, setPage] = useState(1);
+  const queryClient = useQueryClient();
+  const { data, isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["test", page],
+    queryFn: () => fetchTodos(page),
+    staleTime: 1000 * 30,
+    placeholderData: keepPreviousData,
+  });
+  const [url, setUrl] = useState("");
+  const [type, setType] = useState("video");
 
-const CardStackScroll = () => {
-  const containerRef = useRef(null);
-  const slidesRef = useRef([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const isAnimating = useRef(false);
-
-  // Scroll handler
-  useEffect(() => {
-    const handleWheel = (e) => {
-      if (isAnimating.current) return;
-
-      const scrollingDown = e.deltaY > 0;
-      const atFirst = currentIndex === 0;
-      const atLast = currentIndex === slidesData.length - 1;
-
-      if ((scrollingDown && atLast) || (!scrollingDown && atFirst)) {
-        return; // Let the page scroll only after last slide
-      }
-
-      e.preventDefault();
-      isAnimating.current = true;
-
-      const nextIndex = scrollingDown
-        ? Math.min(currentIndex + 1, slidesData.length - 1)
-        : Math.max(currentIndex - 1, 0);
-
-      animateSlideChange(currentIndex, nextIndex);
-      setCurrentIndex(nextIndex);
-
-      setTimeout(() => {
-        isAnimating.current = false;
-      }, 1000);
-    };
-
-    window.addEventListener("wheel", handleWheel, { passive: false });
-    return () => window.removeEventListener("wheel", handleWheel);
-  }, [currentIndex]);
-
-  // Animate between slides
-  const animateSlideChange = (from, to) => {
-    const fromSlide = slidesRef.current[from];
-    const toSlide = slidesRef.current[to];
-
-    gsap.fromTo(
-      toSlide,
-      { autoAlpha: 0 },
-      { autoAlpha: 1, duration: 0.7, ease: "power2.inOut" }
+  const handleDownload = async () => {
+    if (!url) return alert("Enter a YouTube URL");
+    window.open(
+      `http://localhost:4000/download?url=${encodeURIComponent(
+        url
+      )}&type=${type}`
     );
-    gsap.to(fromSlide, {
-      autoAlpha: 0,
-      duration: 0.7,
-      ease: "power2.inOut",
-    });
   };
 
-  return (
-    <div>
-      {/* Slide container */}
-      <div
-        ref={containerRef}
-        style={{
-          position: "relative",
-          height: "100vh",
-          width: "100vw",
-          overflow: "hidden",
-        }}
-      >
-        {slidesData.map((color, index) => (
-          <div
-            key={index}
-            ref={(el) => (slidesRef.current[index] = el)}
-            style={{
-              backgroundColor: color,
-              position: "absolute",
-              top: 0,
-              left: 0,
-              height: "100vh",
-              width: "100vw",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-              fontSize: "3rem",
-              opacity: index === 0 ? 1 : 0,
-              pointerEvents: index === currentIndex ? "auto" : "none",
-            }}
-          >
-            Slide {index + 1}
-          </div>
-        ))}
-      </div>
+  //download youtube video fn
+  // const downloadVideo = () => {
+  //   fetch("http://localhost:4000/download?url=" + encodeURIComponent(videoUrl))
+  //     .then((res) => res.blob())
+  //     .then((blob) => {
+  //       const a = document.createElement("a");
+  //       a.href = URL.createObjectURL(blob);
+  //       a.download = "video.file";
+  //       a.click();
+  //     })
+  //     .catch(console.error);
+  // };
 
-      {/* Main page content */}
-      {currentIndex === slidesData.length - 1 && (
-        <div
-          style={{
-            height: "200vh",
-            background: "#eee",
-            paddingTop: "100vh",
-            textAlign: "center",
-            fontSize: "2rem",
-          }}
-        >
-          🎉 You reached the end of slides. Keep scrolling!
-        </div>
-      )}
+  const mutation = useMutation({
+    mutationFn: createTodo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["test"] });
+    },
+  });
+
+  return (
+    <div style={{ margin: "2rem" }} className="">
+      <h1>Tanstack Query</h1>
+
+      <button onClick={() => refetch()}>Click</button>
+      <button onClick={() => mutation.mutate()}>
+        {mutation.isPending ? "Loading..." : "Create Todo"}
+      </button>
+
+      {/* {isLoading || isFetching ? (
+        "Loading..."
+      ) : (
+      )} */}
+      <ul>
+        {data?.map((todo) => (
+          <li key={todo.id}>{todo.title}</li>
+        ))}
+      </ul>
+      <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
+        <button onClick={() => setPage(page - 1)} disabled={page === 1}>
+          Prev
+        </button>
+        <span>{page}</span>
+        <button onClick={() => setPage(page + 1)} disabled={page === 5}>
+          Next
+        </button>
+      </div>
+      <div>
+        <h1>YouTube Video/Audio Downloader</h1>
+        <input
+          type="text"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          placeholder="Paste YouTube URL"
+          style={{ width: "300px" }}
+        />
+        <select value={type} onChange={(e) => setType(e.target.value)}>
+          <option value="video">Video</option>
+          <option value="audio">Audio (MP3)</option>
+        </select>
+        <button onClick={handleDownload}>Download</button>
+      </div>
     </div>
   );
 };
 
-export default CardStackScroll;
+const createTodo = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const res = await fetch("https://jsonplaceholder.typicode.com/todos", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId: 1,
+      title: "New Todo " + Math.random().toFixed(3),
+      completed: false,
+    }),
+  });
+  return res.json();
+};
+
+const fetchTodos = async (page) => {
+  console.log("fetch todos called");
+
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const res = await fetch(
+    `https://jsonplaceholder.typicode.com/todos?_limit=5&_page=${page}`
+  );
+  let data = await res.json();
+  return data;
+};
+export default App;
