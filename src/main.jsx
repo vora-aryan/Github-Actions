@@ -1,14 +1,26 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
+import "./App.css";
 
-// import "bootstrap/dist/css/bootstrap.css";
+import Routing from "./Routes/Routing.jsx";
+import { BrowserRouter, Link } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
-import App from "./App.jsx";
-import FullPageSlider from "./Components/FullPageSlider.jsx";
-
+const queryClient = new QueryClient();
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <FullPageSlider />
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          <Link to="/">Home</Link>
+          <Link to="/about">About</Link>
+          <Link to="/profile">Profile</Link>
+        </div>
+        <Routing />
+        <ReactQueryDevtools initialIsOpen={false} />
+      </QueryClientProvider>
+    </BrowserRouter>
   </StrictMode>
 );
